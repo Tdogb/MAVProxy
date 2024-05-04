@@ -16,6 +16,8 @@ import errno
 import time
 import math
 import serial
+import glob
+
 try:
     import pynmea2
 except ImportError as e:
@@ -38,8 +40,8 @@ class movinghome(mp_module.MPModule):
         self.lonh = 0  
         self.alth = 0
         #misc settings
-        self.device = "/dev/ttyUSB0"
-        self.baud = 4800
+        self.device = "/dev/cu.usbmodem14124301"
+        self.baud = 9600
         self.updating=False
         self.radius = 15 #min travelled distance (m) before update
         self.check_interval = 3 # seconds
@@ -47,8 +49,9 @@ class movinghome(mp_module.MPModule):
         self.fresh = True #fresh start/first movement
         self.dist = 0
         self.last_decode_error_print = 0
-
+        self.ports = glob.glob('/dev/tty.*')
         print("\nDefault NMEA source is: %s at %s baud, change if needed before turning on." % (self.device , self.baud))
+        print("Type list then set to the index")
         self.add_command('movinghome', self.cmd_movinghome, "movinghome module")
 
             
@@ -69,17 +72,26 @@ class movinghome(mp_module.MPModule):
                 return
             self.radius=float(args[1])
         elif args[0] == "device":
-            if len(args) < 2:
-                print("Usage: device name; device /dev/ttyUSB2")
-                return
-            self.device=args[1]
+            if len(args) < 4:
+                print(args[1])
+                print("Set device to", self.ports[int(args[1])])
+                self.device = self.ports[int(args[1])]
+                # print("Usage: device name; device /dev/ttyUSB2")
+                # return
+            else:
+                self.device=args[1]
         elif args[0] == "baud":
             if len(args) < 2:
                 print("Usage: baud rate; baud 9600")
                 return
             self.baud=args[1]
-        else:
-            print(self.usage)
+        elif args[0] == "list":
+            for i,p in enumerate(self.ports):
+                print("[",i,"] ", p)
+        elif args[0] == "set":
+            self.device=self.ports[int(args[1])]
+        # else:
+        #     print(self.usage)
 
     def status(self):
         #Returns information about module'''
@@ -95,7 +107,6 @@ class movinghome(mp_module.MPModule):
 
 
     def movinghome_on(self):
-        #self.ser = serial.Serial('/dev/ttyUSB0',4800)
         self.ser = serial.Serial(self.device,self.baud)
         self.updating=True
         self.lath = 0 # ensure push of current home.
@@ -120,7 +131,7 @@ class movinghome(mp_module.MPModule):
                     print("movinghome: decode error; baudrate issue?")
                     self.last_decode_error_print = now
                 return
-            if (data.startswith("$GPGGA")):
+            if (data.startswith("$GNGGA")):
                 msg = pynmea2.parse(data)
                 if int(msg.num_sats) > 5:
                     #convert LAT
