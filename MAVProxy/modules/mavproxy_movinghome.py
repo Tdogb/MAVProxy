@@ -76,8 +76,6 @@ class movinghome(mp_module.MPModule):
                 print(args[1])
                 print("Set device to", self.ports[int(args[1])])
                 self.device = self.ports[int(args[1])]
-                # print("Usage: device name; device /dev/ttyUSB2")
-                # return
             else:
                 self.device=args[1]
         elif args[0] == "baud":
@@ -86,6 +84,7 @@ class movinghome(mp_module.MPModule):
                 return
             self.baud=args[1]
         elif args[0] == "list":
+            self.ports = glob.glob('/dev/tty.*')
             for i,p in enumerate(self.ports):
                 print("[",i,"] ", p)
         elif args[0] == "set":
@@ -131,7 +130,7 @@ class movinghome(mp_module.MPModule):
                     print("movinghome: decode error; baudrate issue?")
                     self.last_decode_error_print = now
                 return
-            if (data.startswith("$GNGGA")):
+            if (data.startswith("$GPGGA") or data.startswith("$GNGGA")):
                 msg = pynmea2.parse(data)
                 if int(msg.num_sats) > 5:
                     #convert LAT
