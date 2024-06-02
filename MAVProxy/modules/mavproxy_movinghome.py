@@ -40,7 +40,7 @@ class movinghome(mp_module.MPModule):
         self.lonh = 0  
         self.alth = 0
         #misc settings
-        self.device = "/dev/cu.usbmodem14124301"
+        self.device = ""
         self.baud = 9600
         self.updating=False
         self.radius = 15 #min travelled distance (m) before update
@@ -106,6 +106,10 @@ class movinghome(mp_module.MPModule):
 
 
     def movinghome_on(self):
+        if self.device == "":
+            for file in self.ports:
+                if file.startswith("/dev/tty.usbmodem"):
+                    self.device = file
         self.ser = serial.Serial(self.device,self.baud)
         self.updating=True
         self.lath = 0 # ensure push of current home.
@@ -145,24 +149,23 @@ class movinghome(mp_module.MPModule):
                     self.lon = DD + MM/60
                     if msg.lon_dir == "W":
                         self.lon = -self.lon;
-
                 now = time.time()
                 if now-self.last_check > self.check_interval:
                     self.last_check = now
                     #check if we moved enough
                     self.dist = self.haversine(self.lon, self.lat, self.alt, self.lonh, self.lath, self.alth)
-                    if self.dist > self.radius:
-                        if self.fresh == True:
-                            self.say("GCS position set as home")    
-                            self.fresh = False
-                        else:
-                            message = "GCS moved "
-                            message2 = message + "%.0f" % self.dist + "meters"
-                            self.say("%s: %s" % (self.name,message2))
-                            message2_enc = message2.encode(bytes)
-                            self.master.mav.statustext_send(mavutil.mavlink.MAV_SEVERITY_NOTICE, message2)
-                        self.console.writeln("home position updated")
-
+                    if self.dist > self.radius or True:
+                        # if self.fresh == True:
+                        #     self.say("GCS position set as home")    
+                        #     self.fresh = False
+                        # else:
+                        #     message = "GCS moved "
+                        #     message2 = message + "%.0f" % self.dist + "meters"
+                        #     self.say("%s: %s" % (self.name,message2))
+                        #     # message2_enc = message2.encode(bytes)
+                        #     # self.master.mav.statustext_send(mavutil.mavlink.MAV_SEVERITY_NOTICE, message2_enc)
+                        # self.console.writeln("home position updated")
+                        self.say("%s" % ("updating"))
                         self.master.mav.command_int_send(
                         self.settings.target_system, self.settings.target_component,
                         mavutil.mavlink.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
@@ -176,7 +179,7 @@ class movinghome(mp_module.MPModule):
                         int(self.lat*1e7), # param5
                         int(self.lon*1e7), # param6
                         0) # param7
-
+                        self.say("%s" % ("done"))
                         self.lath = self.lat
                         self.lonh = self.lon
                         #print data
